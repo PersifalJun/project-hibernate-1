@@ -2,22 +2,14 @@ package com.game.entity;
 
 import java.util.Date;
 
-
 public class Player {
     private Long id;
-
     private String name;
-
     private String title;
-
     private Race race;
-
     private Profession profession;
-
     private Date birthday;
-
     private Boolean banned;
-
     private Integer level;
 
     public Player() {

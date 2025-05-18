@@ -3,9 +3,8 @@ package com.game.service;
 import com.game.entity.Player;
 import com.game.entity.Profession;
 import com.game.entity.Race;
-import com.game.repository.IPlayerRepository;
+import com.game.repository.PlayerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -17,9 +16,9 @@ import static java.util.Objects.nonNull;
 
 @Service
 public class PlayerService {
-    private final IPlayerRepository playerRepository;
+    private final PlayerRepository playerRepository;
 
-    public PlayerService(@Qualifier("db") @Autowired IPlayerRepository playerRepository) {
+    public PlayerService(@Autowired PlayerRepository playerRepository) {
         this.playerRepository = playerRepository;
     }
 
