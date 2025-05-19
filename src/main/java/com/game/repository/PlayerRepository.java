@@ -3,17 +3,54 @@ package com.game.repository;
 import com.game.entity.Player;
 import com.game.entity.Profession;
 import com.game.entity.Race;
+
+
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+
+
+import org.hibernate.Transaction;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.cfg.Environment;
+import org.hibernate.query.NativeQuery;
+
+import org.hibernate.query.Query;
 import org.springframework.stereotype.Repository;
 
-import java.util.Comparator;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import javax.annotation.PreDestroy;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.stream.Collectors;
+
 
 @Repository
 public class PlayerRepository {
+    private final SessionFactory sessionFactory;
+
+    public PlayerRepository() {
+        Properties properties = new Properties();
+
+        properties.put(Environment.DIALECT, "org.hibernate.dialect.MySQL5Dialect");
+        properties.put(Environment.DRIVER, "com.mysql.cj.jdbc.Driver");
+        properties.put(Environment.URL, "jdbc:mysql://localhost:3306/rpg");
+
+        /*properties.put(Environment.DRIVER, "com.p6spy.engine.spy.P6SpyDriver"); --это вызывает ошибку,ничего не работает , долго пытался исправить это
+        properties.put(Environment.URL, "jdbc:p6spy:mysql://localhost:3306/rpg");*/
+
+        properties.put(Environment.USER, "root");
+        properties.put(Environment.PASS, "mysqlSUBD");
+        properties.put(Environment.SHOW_SQL, "true");
+        properties.put(Environment.FORMAT_SQL, "true");
+        properties.put(Environment.HBM2DDL_AUTO, "update");
+
+        Configuration configuration = new Configuration();
+        configuration.setProperties(properties);
+        configuration.addAnnotatedClass(Player.class);
+
+        this.sessionFactory = configuration.buildSessionFactory();
+    }
+
+
+
     private static final List<Player> storage = new CopyOnWriteArrayList<Player>() {{
         add(new Player(1L, "Ниус", "Приходящий Без Шума", Race.HOBBIT, Profession.ROGUE, new Date(1244497480000L), false, 33));
         add(new Player(2L, "Никрашш", "НайтВульф", Race.ORC, Profession.WARRIOR, new Date(1152424240000L), false, 58));
@@ -58,34 +95,74 @@ public class PlayerRepository {
     }};
 
     public List<Player> getAll(int pageNumber, int pageSize) {
-        return storage.stream()
-                .sorted(Comparator.comparingLong(Player::getId))
-                .skip((long) pageNumber * pageSize)
-                .limit(pageSize)
-                .collect(Collectors.toList());
+
+
+        try(Session session = sessionFactory.openSession())
+        {
+            NativeQuery<Player> query = session.createNativeQuery("select * from rpg.player ", Player.class);
+            query.setFirstResult(pageNumber * pageSize);
+            query.setMaxResults(pageSize);
+            return query.list();
+
+        }
+
 
     }
+
 
     public int getAllCount() {
-        return storage.size();
+
+
+        try( Session session = sessionFactory.openSession()) {
+            Query<Long> query = session.createNamedQuery("player_getPlayersCount", Long.class);
+            return Math.toIntExact(query.uniqueResult());
+        }
     }
 
+    @PreDestroy
+    public void beforeStop(){
+        sessionFactory.close();
+
+    }
+
+
     public Player save(Player player) {
-        player.setId(getMaxId() + 1);
-        storage.add(player);
-        return player;
+        try(Session session = sessionFactory.openSession()){
+            Transaction transaction = session.beginTransaction();
+            session.save(player);
+            transaction.commit();
+            return player;
+        }
     }
 
     public Player update(Player player) {
-        return player;
+        try(Session session = sessionFactory.openSession()){
+            Transaction transaction = session.beginTransaction();
+            session.update(player);
+            transaction.commit();
+            return player;
+
+        }
+
     }
 
     public Optional<Player> findById(long id) {
-        return storage.stream().filter(player -> id == player.getId()).findFirst();
+       try(Session session = sessionFactory.openSession()){
+           Transaction transaction = session.beginTransaction();
+           Player player = session.find(Player.class, id);
+           return Optional.ofNullable(player);
+       }
     }
 
+
     public void delete(Player player) {
-        storage.remove(player);
+        try(Session session = sessionFactory.openSession()){
+            Transaction transaction = session.beginTransaction();
+            session.delete(player);
+            transaction.commit();
+
+        }
+
     }
 
     private long getMaxId() {
